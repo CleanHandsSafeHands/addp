@@ -14,242 +14,242 @@ import socket
 import struct
 
 typ_codes = {
-	0x0001: "Discovery Request",
-	0x0002: "Discovery Response",
-	0x0003: "Static Network Configuration Request",
-	0x0004: "Static Network Configuration Response",
-	0x0005: "Reboot Request",
-	0x0006: "Reboot Response",
-	0x0007: "DHCP Network Configuration Request",
-	0x0008: "DHCP Network Configuration Response"}
+    0x0001: "Discovery Request",
+    0x0002: "Discovery Response",
+    0x0003: "Static Network Configuration Request",
+    0x0004: "Static Network Configuration Response",
+    0x0005: "Reboot Request",
+    0x0006: "Reboot Response",
+    0x0007: "DHCP Network Configuration Request",
+    0x0008: "DHCP Network Configuration Response"}
 
 # {code: (desc, encoder, decoder)}
 fld_codes = {
-	0x01: ("MAC address", lambda x: struct.pack("6B", *x), lambda x: struct.unpack("6B", x)),
-	0x02: ("IP address", lambda x: struct.pack("4B", *x), lambda x: struct.unpack("4B", x)),
-	0x03: ("Netmask", lambda x: struct.pack("4B", *x), lambda x: struct.unpack("4B", x)),
-	0x04: ("Network Name", lambda x: x, lambda x: x),
-	0x05: ("Domain", lambda x: x, lambda x: x),
-	0x06: ("HW Type", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
-	0x07: ("HW Revision", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
-	0x08: ("Firmware", lambda x: x, lambda x: x),
-	0x09: ("Result message", lambda x: x, lambda x: x),
-	0x0a: ("Result flag", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
-	0x0b: ("IP Gateway", lambda x: struct.pack("BBBB", *x), lambda x: struct.unpack("BBBB", x)),
-	0x0c: ("Configuration error code", lambda x: struct.pack(">H", x), lambda x: struct.unpack('>H', x)[0]),
-	0x0d: ("device name", lambda x: x, lambda x: x),
-	0x0e: ("Real Port number", lambda x: struct.pack(">L", x), lambda x: struct.unpack('>L', x)[0]),
-	0x0f: ("DNS IP address", lambda x: struct.pack("BBBB", *x), lambda x: struct.unpack("BBBB", x)),
-	0x10: ("UNKNOWN16", lambda x: struct.pack("BBBB", *x), lambda x: code_16_parser(x)),
-	0x11: ("Error code", lambda x: struct.pack("B", x), lambda x: error_codes[ord(x)]),
-	0x12: ("Serial Port Count", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
-	0x13: ("Encrypted Real Port number", lambda x: struct.pack(">L", x), lambda x: struct.unpack('>L', x)[0]),
-	0x19: ("UNKNOWN19", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
-	0x1a: ("Device-ID", lambda x: x, lambda x: "%08X-%08X-%08X-%08X"%struct.unpack('>4L', x))}
+    0x01: ("MAC address", lambda x: struct.pack("6B", *x), lambda x: struct.unpack("6B", x)),
+    0x02: ("IP address", lambda x: struct.pack("4B", *x), lambda x: struct.unpack("4B", x)),
+    0x03: ("Netmask", lambda x: struct.pack("4B", *x), lambda x: struct.unpack("4B", x)),
+    0x04: ("Network Name", lambda x: x, lambda x: x),
+    0x05: ("Domain", lambda x: x, lambda x: x),
+    0x06: ("HW Type", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
+    0x07: ("HW Revision", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
+    0x08: ("Firmware", lambda x: x, lambda x: x),
+    0x09: ("Result message", lambda x: x, lambda x: x),
+    0x0a: ("Result flag", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
+    0x0b: ("IP Gateway", lambda x: struct.pack("BBBB", *x), lambda x: struct.unpack("BBBB", x)),
+    0x0c: ("Configuration error code", lambda x: struct.pack(">H", x), lambda x: struct.unpack('>H', x)[0]),
+    0x0d: ("device name", lambda x: x, lambda x: x),
+    0x0e: ("Real Port number", lambda x: struct.pack(">L", x), lambda x: struct.unpack('>L', x)[0]),
+    0x0f: ("DNS IP address", lambda x: struct.pack("BBBB", *x), lambda x: struct.unpack("BBBB", x)),
+    0x10: ("UNKNOWN16", lambda x: struct.pack("BBBB", *x), lambda x: code_16_parser(x)),
+    0x11: ("Error code", lambda x: struct.pack("B", x), lambda x: error_codes[ord(x)]),
+    0x12: ("Serial Port Count", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
+    0x13: ("Encrypted Real Port number", lambda x: struct.pack(">L", x), lambda x: struct.unpack('>L', x)[0]),
+    0x19: ("UNKNOWN19", lambda x: struct.pack("B", x), lambda x: struct.unpack("B", x)[0]),
+    0x1a: ("Device-ID", lambda x: x, lambda x: "%08X-%08X-%08X-%08X"%struct.unpack('>4L', x))}
 
 error_codes = {
-	0x00: "Success",
-	0x01: "Authentication Failure",
-	0x03: "Invalid Value",
-	0x06: "Unable to save value"}
+    0x00: "Success",
+    0x01: "Authentication Failure",
+    0x03: "Invalid Value",
+    0x06: "Unable to save value"}
 
 def build_frame(typ, body):
-	return "DIGI".encode() + struct.pack('>HH', typ, len(body)) + body
+    return "DIGI".encode() + struct.pack('>HH', typ, len(body)) + body
 
 def build_fields(flds):
-	body = ""
-	for c, v in flds.items():
-		val = fld_codes[c][1](v)
-		body += struct.pack("BB", c, len(val)) + val
-	return body
+    body = ""
+    for c, v in flds.items():
+        val = fld_codes[c][1](v)
+        body += struct.pack("BB", c, len(val)) + val
+    return body
 
 def parse_frame(d):
-	info = {}
-	if d[:4] != b'DIGI':
-		print('Invalid magic header:', repr(d[:4]))
-		return None
+    info = {}
+    if d[:4] != b'DIGI':
+        print('Invalid magic header:', repr(d[:4]))
+        return None
 
-	hdr = d[4:8]
-	bdy = d[8:]
-	(typ, ln) = struct.unpack(">HH", hdr)
+    hdr = d[4:8]
+    bdy = d[8:]
+    (typ, ln) = struct.unpack(">HH", hdr)
 
-	if len(bdy) != ln:
-		print('Invalid format: lengths did not match:')
-		print('expected: %d, got: %d' % (ln, len(bdy)))
-		print(repr(d))
-		return None
+    if len(bdy) != ln:
+        print('Invalid format: lengths did not match:')
+        print('expected: %d, got: %d' % (ln, len(bdy)))
+        print(repr(d))
+        return None
 
-	if typ not in typ_codes:
-		print('Unknown message code: {}'.format(typ))
-		return None
+    if typ not in typ_codes:
+        print('Unknown message code: {}'.format(typ))
+        return None
 
-	info['code'] = typ
-	info['msg_len'] = ln
-	info['message'] = typ_codes[typ]
-	info['msg_type'] = 'request'
+    info['code'] = typ
+    info['msg_len'] = ln
+    info['message'] = typ_codes[typ]
+    info['msg_type'] = 'request'
 
-	if typ == 0x01:
-		# discovery req
-		info['mac'] = struct.unpack("BBBBBB", bdy)
+    if typ == 0x01:
+        # discovery req
+        info['mac'] = struct.unpack("BBBBBB", bdy)
 
-	elif typ == 0x03:
-		# change ip req
-		info['ip_addr'] = struct.unpack("BBBB", bdy[:4])
-		info['subnet'] = struct.unpack("BBBB", bdy[4:8])
-		info['gatway'] = struct.unpack("BBBB", bdy[8:12])
-		info['mac'] = struct.unpack("BBBBBB", bdy[12:18])
-		info['auth'] = bdy[18:]
+    elif typ == 0x03:
+        # change ip req
+        info['ip_addr'] = struct.unpack("BBBB", bdy[:4])
+        info['subnet'] = struct.unpack("BBBB", bdy[4:8])
+        info['gatway'] = struct.unpack("BBBB", bdy[8:12])
+        info['mac'] = struct.unpack("BBBBBB", bdy[12:18])
+        info['auth'] = bdy[18:]
 
-	elif typ == 0x05:
-		# reboot req
-		info['mac'] = struct.unpack("BBBBBB", bdy[:6])
-		info['auth'] = bdy[6:]
+    elif typ == 0x05:
+        # reboot req
+        info['mac'] = struct.unpack("BBBBBB", bdy[:6])
+        info['auth'] = bdy[6:]
 
-	elif typ == 0x07:
-		# dhcp req
-		#info['byte'] = struct.unpack("B", bdy[:1])
-		info['mac'] = struct.unpack("BBBBBB", bdy[1:7])
-		info['auth'] = bdy[7:]
+    elif typ == 0x07:
+        # dhcp req
+        #info['byte'] = struct.unpack("B", bdy[:1])
+        info['mac'] = struct.unpack("BBBBBB", bdy[1:7])
+        info['auth'] = bdy[7:]
 
-	elif typ in [0x02, 0x04, 0x06, 0x08]:
-		info['msg_type'] = 'response'
-		vals = parse_response(bdy)
-		info.update(vals)
+    elif typ in [0x02, 0x04, 0x06, 0x08]:
+        info['msg_type'] = 'response'
+        vals = parse_response(bdy)
+        info.update(vals)
 
-	return info
+    return info
 
 def build_request(typ, **kwargs):
-	if typ == 0x01:
-		# discover - requires mac
-		mac = kwargs['mac']
-		body = struct.pack("6B", *mac)
-	if typ == 0x03:
-		# static network configuration
-		mac = kwargs['mac']
-		auth = kwargs['auth']
-		ipaddr = kwargs['ipaddr']
-		subnet = kwargs['subnet']
-		gateway = kwargs['gateway']
-		body = struct.pack("4B", *ipaddr)
-		body += struct.pack("4B", *subnet)
-		body += struct.pack("4B", *gateway)
-		body += struct.pack("6B", *mac)
-		body += struct.pack("B", len(auth)) + auth
-	if typ == 0x05:
-		# reboot - requires mac, auth
-		mac = kwargs['mac']
-		auth = kwargs['auth']
-		body = struct.pack("6B", *mac)
-		body += struct.pack("B", len(auth)) + auth
-	if typ == 0x07:
-		# dhcp - requires mac, auth, 
-		mac = kwargs['mac']
-		auth = kwargs['auth']
-		body = struct.pack("B", 1)
-		body += struct.pack("6B", *mac)
-		body += struct.pack("B", len(auth)) + auth
-	return build_frame(typ, body)
+    if typ == 0x01:
+        # discover - requires mac
+        mac = kwargs['mac']
+        body = struct.pack("6B", *mac)
+    if typ == 0x03:
+        # static network configuration
+        mac = kwargs['mac']
+        auth = kwargs['auth']
+        ipaddr = kwargs['ipaddr']
+        subnet = kwargs['subnet']
+        gateway = kwargs['gateway']
+        body = struct.pack("4B", *ipaddr)
+        body += struct.pack("4B", *subnet)
+        body += struct.pack("4B", *gateway)
+        body += struct.pack("6B", *mac)
+        body += struct.pack("B", len(auth)) + auth
+    if typ == 0x05:
+        # reboot - requires mac, auth
+        mac = kwargs['mac']
+        auth = kwargs['auth']
+        body = struct.pack("6B", *mac)
+        body += struct.pack("B", len(auth)) + auth
+    if typ == 0x07:
+        # dhcp - requires mac, auth, 
+        mac = kwargs['mac']
+        auth = kwargs['auth']
+        body = struct.pack("B", 1)
+        body += struct.pack("6B", *mac)
+        body += struct.pack("B", len(auth)) + auth
+    return build_frame(typ, body)
 
 def build_response(info):
-	resp = None
-	if info['code'] == 0x01:
-		flds = {0x01: (0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
-				0x02: (1, 1, 1, 1),
-				0x03: (255, 255, 255, 0),
-				0x04: "test",
-				0x0b: (1, 1, 1, 1),
-				0x0d: "ADDP Emulator",
-				#0x10: 0,
-				0x07: 0,
-				0x08: "V.1 04-25-2013",
-				0x0e: 771,
-				0x13: 1027,
-				0x12: 1}
-		resp = build_frame(0x02, build_fields(flds))
-	elif info['code'] == 0x05:
-		flds = {0x01: (0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
-				0x09: "Operation FOO",
-				0x0a: 0,
-				0x11: 0}
-		resp = build_frame(0x06, build_fields(flds))
+    resp = None
+    if info['code'] == 0x01:
+        flds = {0x01: (0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
+                0x02: (1, 1, 1, 1),
+                0x03: (255, 255, 255, 0),
+                0x04: "test",
+                0x0b: (1, 1, 1, 1),
+                0x0d: "ADDP Emulator",
+                #0x10: 0,
+                0x07: 0,
+                0x08: "V.1 04-25-2013",
+                0x0e: 771,
+                0x13: 1027,
+                0x12: 1}
+        resp = build_frame(0x02, build_fields(flds))
+    elif info['code'] == 0x05:
+        flds = {0x01: (0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
+                0x09: "Operation FOO",
+                0x0a: 0,
+                0x11: 0}
+        resp = build_frame(0x06, build_fields(flds))
 
-	return resp
+    return resp
 
 def parse_response(body):
-	info = {}
-	while body != b"":
-		code = body[0]
-		ln = body[1]
-		fld = body[2:ln+2]
-		body = body[ln+2:]
+    info = {}
+    while body != b"":
+        code = body[0]
+        ln = body[1]
+        fld = body[2:ln+2]
+        body = body[ln+2:]
 
-		if code not in fld_codes:
-			# Skip Unrecognized Codes
-			continue
+        if code not in fld_codes:
+            # Skip Unrecognized Codes
+            continue
 
-		info[fld_codes[code][0]] = fld_codes[code][2](fld)
+        info[fld_codes[code][0]] = fld_codes[code][2](fld)
 
-	return info
+    return info
 
 def code_16_parser(x):
-	if len(x) == 1:
-		return ord(x)
-	elif len(x) == 4:
-		return struct.unpack("BBBB", x)
-	else:
-		return x
+    if len(x) == 1:
+        return ord(x)
+    elif len(x) == 4:
+        return struct.unpack("BBBB", x)
+    else:
+        return x
 
 def discover_devices():
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
 
-	# you can only use the REUSE options OR the bind, not both
-	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	try:
-		sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-	except AttributeError:
-		pass
-	
-	sock.bind(("", 2362))
+    # you can only use the REUSE options OR the bind, not both
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    except AttributeError:
+        pass
+    
+    sock.bind(("", 2362))
 
-	sock.settimeout(1.0)
-	msg = build_request(0x01, mac=(255,255,255,255,255,255))
+    sock.settimeout(1.0)
+    msg = build_request(0x01, mac=(255,255,255,255,255,255))
 
-	sock.sendto(msg, ("224.0.5.128", 2362))
+    sock.sendto(msg, ("224.0.5.128", 2362))
 
-	responses = []
-	while True:
-		try:
-			data, addr = sock.recvfrom(2048)
-		except:
-			break
+    responses = []
+    while True:
+        try:
+            data, addr = sock.recvfrom(2048)
+        except:
+            break
 
-		if data is None or data == '':
-			break
+        if data is None or data == '':
+            break
 
-		info = parse_frame(data)
-		if info:
-			info['addp_ip'] = addr[0]
-			responses.append(info)
+        info = parse_frame(data)
+        if info:
+            info['addp_ip'] = addr[0]
+            responses.append(info)
 
-	sock.close()
-	return responses
+    sock.close()
+    return responses
 
 if __name__ == '__main__':
-	print("{: ^16}|{: ^16}|{: ^16}".format("MAC Address","IP Address","Hardware"))
-	print("=================================================")
-	for device in discover_devices():
-		_mac = "{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}".format(
-			device['MAC address'][0],
-			device['MAC address'][1],
-			device['MAC address'][2],
-			device['MAC address'][3],
-			device['MAC address'][4],
-			device['MAC address'][5])
-		_ip = "{}.{}.{}.{}".format(
-			device['IP address'][0],
-			device['IP address'][1],
-			device['IP address'][2],
-			device['IP address'][3])
-		_name = device['device name'].decode()
-		print("{: ^16}|{: ^16}|{: ^16}".format(_mac,_ip,_name))
+    print("{: ^16}|{: ^16}|{: ^16}".format("MAC Address","IP Address","Hardware"))
+    print("=================================================")
+    for device in discover_devices():
+        _mac = "{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}".format(
+            device['MAC address'][0],
+            device['MAC address'][1],
+            device['MAC address'][2],
+            device['MAC address'][3],
+            device['MAC address'][4],
+            device['MAC address'][5])
+        _ip = "{}.{}.{}.{}".format(
+            device['IP address'][0],
+            device['IP address'][1],
+            device['IP address'][2],
+            device['IP address'][3])
+        _name = device['device name'].decode()
+        print("{: ^16}|{: ^16}|{: ^16}".format(_mac,_ip,_name))
