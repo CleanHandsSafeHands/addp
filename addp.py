@@ -52,7 +52,7 @@ error_codes = {
 	0x06: "Unable to save value"}
 
 def build_frame(typ, body):
-	return "DIGI" + struct.pack('>HH', typ, len(body)) + body
+	return "DIGI".encode() + struct.pack('>HH', typ, len(body)) + body
 
 def build_fields(flds):
 	body = ""
@@ -63,22 +63,22 @@ def build_fields(flds):
 
 def parse_frame(d):
 	info = {}
-	if d[:4] != 'DIGI':	
-	    print 'Invalid magic header:', repr(d[:4])	
-	    return None	
+	if d[:4] != b'DIGI':
+		print('Invalid magic header:', repr(d[:4]))
+		return None
 
 	hdr = d[4:8]
 	bdy = d[8:]
 	(typ, ln) = struct.unpack(">HH", hdr)
 
 	if len(bdy) != ln:
-		print 'Invalid format: lengths did not match:'
-		print 'expected: %d, got: %d' % (ln, len(bdy))
-		print repr(d)
+		print('Invalid format: lengths did not match:')
+		print('expected: %d, got: %d' % (ln, len(bdy)))
+		print(repr(d))
 		return None
 
 	if typ not in typ_codes:
-		print 'Unknown message code:', typ
+		print('Unknown message code: {}'.format(typ))
 		return None
 
 	info['code'] = typ
@@ -112,7 +112,7 @@ def parse_frame(d):
 	elif typ in [0x02, 0x04, 0x06, 0x08]:
 		info['msg_type'] = 'response'
 		vals = parse_response(bdy)
-		info = dict(info.items() + vals.items())
+		info.update(vals)
 
 	return info
 
@@ -175,11 +175,15 @@ def build_response(info):
 
 def parse_response(body):
 	info = {}
-	while body != "":
-		code = ord(body[0])
-		ln = ord(body[1])
+	while body != b"":
+		code = body[0]
+		ln = body[1]
 		fld = body[2:ln+2]
 		body = body[ln+2:]
+
+		if code not in fld_codes:
+			# Skip Unrecognized Codes
+			continue
 
 		info[fld_codes[code][0]] = fld_codes[code][2](fld)
 
