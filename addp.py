@@ -9,6 +9,8 @@ Almost all info for this module comes from:
   http://qbeukes.blogspot.com/2009/11/advanced-digi-discovery-protocol_21.html
 """
 
+import sys
+import socket
 import struct
 
 typ_codes = {
@@ -196,3 +198,58 @@ def code_16_parser(x):
 		return struct.unpack("BBBB", x)
 	else:
 		return x
+
+def discover_devices():
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+
+	# you can only use the REUSE options OR the bind, not both
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	try:
+		sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+	except AttributeError:
+		pass
+	
+	sock.bind(("", 2362))
+
+	sock.settimeout(1.0)
+	msg = build_request(0x01, mac=(255,255,255,255,255,255))
+
+	sock.sendto(msg, ("224.0.5.128", 2362))
+
+	responses = []
+	while True:
+		try:
+			data, addr = sock.recvfrom(2048)
+		except:
+			break
+
+		if data is None or data == '':
+			break
+
+		info = parse_frame(data)
+		if info:
+			info['addp_ip'] = addr[0]
+			responses.append(info)
+
+	sock.close()
+	return responses
+
+if __name__ == '__main__':
+	print("{: ^16}|{: ^16}|{: ^16}".format("MAC Address","IP Address","Hardware"))
+	print("=================================================")
+	for device in discover_devices():
+		_mac = "{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}".format(
+			device['MAC address'][0],
+			device['MAC address'][1],
+			device['MAC address'][2],
+			device['MAC address'][3],
+			device['MAC address'][4],
+			device['MAC address'][5])
+		_ip = "{}.{}.{}.{}".format(
+			device['IP address'][0],
+			device['IP address'][1],
+			device['IP address'][2],
+			device['IP address'][3])
+		_name = device['device name'].decode()
+		print("{: ^16}|{: ^16}|{: ^16}".format(_mac,_ip,_name))
